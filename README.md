@@ -1,8 +1,6 @@
 # Lab 2: Test-Driven Development with Vitest
 **Week 2 | Testing II (TDD)**
 
----
-
 ## Overview
 
 In this lab, you'll build a string utility library using **Test-Driven Development (TDD)**. Rather than writing code first and tests second, you'll practice the Red-Green-Refactor cycle: write a failing test, write just enough code to pass it, then improve your code's design.
@@ -15,8 +13,6 @@ By the end of this lab, you'll have a working utility library with comprehensive
 > [!IMPORTANT]
 > **Windows Users:** We recommend using [PowerShell](https://microsoft.com/powershell) instead of Command Prompt for this lab. PowerShell supports most Unix-style commands. Where commands differ, we provide both versions.
 
----
-
 ## Learning Objectives
 
 By completing this lab, you will be able to:
@@ -27,8 +23,6 @@ By completing this lab, you will be able to:
 4. **Recognize** when to use test doubles (and when real implementations suffice)
 5. **Explain** how TDD influences code design decisions
 6. **Achieve** high test coverage through test-first development
-
----
 
 ## Connection to Readings
 
