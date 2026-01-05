@@ -1,0 +1,221 @@
+name: Lab 2 Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check TypeScript compilation
+        run: npm run build
+
+      - name: Run tests with coverage
+        run: npm run test:coverage
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 14
+
+  grading-checks:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify required files exist
+        id: files
+        run: |
+          echo "## 📁 Required Files Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          FILES_MISSING=0
+          
+          check_file() {
+            if [ -f "$1" ]; then
+              echo "✅ $1 exists" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ $1 missing" >> $GITHUB_STEP_SUMMARY
+              FILES_MISSING=1
+            fi
+          }
+          
+          check_file "src/stringUtils.ts"
+          check_file "src/__tests__/stringUtils.test.ts"
+          check_file "README.md"
+          check_file "tsconfig.json"
+          check_file "vitest.config.ts"
+          check_file "package.json"
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ $FILES_MISSING -eq 1 ]; then
+            echo "files_ok=false" >> $GITHUB_OUTPUT
+          else
+            echo "files_ok=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check minimum test count
+        id: testcount
+        run: |
+          echo "## 🧪 Test Count Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Run tests in JSON reporter mode to count
+          npm run test -- --reporter=json > test-results.json 2>/dev/null || true
+          
+          # Count test cases (look for 'it(' or 'test(' in test files)
+          TEST_COUNT=$(grep -E "^\s*(it|test)\s*\(" src/__tests__/*.test.ts | wc -l)
+          
+          echo "Found **$TEST_COUNT** test cases" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "$TEST_COUNT" -ge 16 ]; then
+            echo "✅ Meets minimum of 16 tests" >> $GITHUB_STEP_SUMMARY
+            echo "testcount_ok=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Below minimum of 16 tests (found $TEST_COUNT)" >> $GITHUB_STEP_SUMMARY
+            echo "testcount_ok=false" >> $GITHUB_OUTPUT
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: Validate coverage threshold
+        id: coverage
+        run: |
+          echo "## 📊 Coverage Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Run coverage and capture output
+          COVERAGE_OUTPUT=$(npm run test:coverage 2>&1) || true
+          
+          # Extract coverage percentages (looking for the summary line)
+          STATEMENTS=$(echo "$COVERAGE_OUTPUT" | grep -oP 'All files\s*\|\s*\K[\d.]+' | head -1)
+          
+          if [ -z "$STATEMENTS" ]; then
+            # Try alternate parsing
+            STATEMENTS=$(echo "$COVERAGE_OUTPUT" | grep -E "^\s*All files" | grep -oP '\d+(\.\d+)?' | head -1)
+          fi
+          
+          if [ -n "$STATEMENTS" ]; then
+            echo "Statement coverage: **${STATEMENTS}%**" >> $GITHUB_STEP_SUMMARY
+            
+            # Check if above 90%
+            ABOVE_THRESHOLD=$(echo "$STATEMENTS >= 90" | bc -l 2>/dev/null || echo "1")
+            
+            if [ "$ABOVE_THRESHOLD" = "1" ]; then
+              echo "✅ Coverage meets 90% threshold" >> $GITHUB_STEP_SUMMARY
+              echo "coverage_ok=true" >> $GITHUB_OUTPUT
+            else
+              echo "❌ Coverage below 90% threshold" >> $GITHUB_STEP_SUMMARY
+              echo "coverage_ok=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "⚠️ Could not parse coverage (tests may have failed)" >> $GITHUB_STEP_SUMMARY
+            echo "coverage_ok=false" >> $GITHUB_OUTPUT
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check README sections
+        id: readme
+        run: |
+          echo "## 📝 README Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          README_OK=true
+          
+          if grep -qi "reflection" README.md; then
+            echo "✅ Reflection section found" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Reflection section missing" >> $GITHUB_STEP_SUMMARY
+            README_OK=false
+          fi
+          
+          if grep -qi "tdd\|test-driven" README.md; then
+            echo "✅ TDD concepts mentioned" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ TDD concepts not explicitly mentioned" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if grep -qiE "capitalize|truncate|slugify" README.md; then
+            echo "✅ Function descriptions found" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Function descriptions missing" >> $GITHUB_STEP_SUMMARY
+            README_OK=false
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "$README_OK" = "true" ]; then
+            echo "readme_ok=true" >> $GITHUB_OUTPUT
+          else
+            echo "readme_ok=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check required functions exist
+        id: functions
+        run: |
+          echo "## 🔧 Function Implementation Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          FUNCS_OK=true
+          
+          for func in capitalize truncate slugify; do
+            if grep -qE "export\s+(function|const)\s+$func" src/stringUtils.ts; then
+              echo "✅ $func() implemented" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ $func() not found" >> $GITHUB_STEP_SUMMARY
+              FUNCS_OK=false
+            fi
+          done
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "$FUNCS_OK" = "true" ]; then
+            echo "functions_ok=true" >> $GITHUB_OUTPUT
+          else
+            echo "functions_ok=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate grading summary
+        run: |
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "## 📋 Grading Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Required Files | ${{ steps.files.outputs.files_ok == 'true' && '✅ Pass' || '❌ Fail' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Test Count (≥16) | ${{ steps.testcount.outputs.testcount_ok == 'true' && '✅ Pass' || '❌ Fail' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Coverage (≥90%) | ${{ steps.coverage.outputs.coverage_ok == 'true' && '✅ Pass' || '❌ Fail' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| README Sections | ${{ steps.readme.outputs.readme_ok == 'true' && '✅ Pass' || '❌ Fail' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Functions Implemented | ${{ steps.functions.outputs.functions_ok == 'true' && '✅ Pass' || '❌ Fail' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "*Note: This is an automated check. Final grade may include manual review.*" >> $GITHUB_STEP_SUMMARY
