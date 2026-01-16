@@ -672,3 +672,67 @@ Check the HTML coverage report in `coverage/index.html` to see which lines aren'
 - 🔗 [Mocks Aren't Stubs](https://martinfowler.com/articles/mocksArentStubs.html) — Martin Fowler
 - 🔗 [Test Double](https://martinfowler.com/bliki/TestDouble.html) — Martin Fowler
 - 🔗 [Testing Implementation Details](https://kentcdodds.com/blog/testing-implementation-details) — Kent C. Dodds
+
+
+Project description:
+    Using TDD I added the starting functionality of a checkout program. The program allows
+    a customer to fill a cart with items, then it returns the subtotal, discounts applied, 
+    taxes, and grand total of the customers cart.
+
+How to run tests:
+    -   npm run test
+    -   npm run test:coverage
+
+Function Descriptions:
+    - applyDiscount: Using a price and discount percentage we return the price after being
+    reduced by discount. Errors are thrown when attempting to use inappropriate numbers,
+    like negative prices, discounts, or a discount that exceeds 100%.
+
+    - calculateTax: Using a price, tax percent, and checking for tax exemptions we return 
+    the amount of money that should be charged to account for the tax. 0 is returned for
+    tax exempt items, and errors are thrown when attempting to use inappropriate numbers,
+    like negative prices or tax rates.
+
+    - calculateTotal: Using a cart of items, discount percent, and tax rate we return a 
+    CartTotals object that contains the subtotal, discount, tax, and grand total values
+    of the customers cart. We check to make sure that item quantities are not below 0.
+
+Refelction Questions: (I filled out the reflections as I went, but not sure if these ones were
+                    needed. I got to the end and realized you had specific ones written there
+                    after doing these.)
+
+    2.1: Why do we intentionally write a failing test first? How does this relate to what Fowler describes as "state verification"?
+
+        State verification is about testing how the provided data has changed in the test. In 
+        this case we want to see the 100 turn into 90 after applying a 10 percent discount. 
+        Writing a failing test first allows us to define how we want our code to perform. This
+        makes sure that when we go to implement our logic that we will be meeting our set 
+        expectations.
+
+    2.4: In the mockist vs. classicist debate from Fowler's article, which approach are we using here? Why don't we need any test doubles for this function?
+
+        There isn't much implemented yet, but to my understanding this is the system that would
+        be used in production. This would mean that our testing is using the classical TDD approach.         We don't need any test doubles for this function because we aren't using external
+        dependencies or complicated parameters.
+
+
+    3.3: Notice that we changed the implementation (added rounding), but our tests still pass because we used toBeCloseTo. This is what Kent C. Dodds means by "not testing implementation details." What would a test that does test implementation details look like?
+
+        A test that checks implementation details would include testing in Math.rounding was called
+        or if the program didn't use the Math library.
+
+    
+    How did TDD change the way you approached implementing calculateTotal?
+        It helped me to slow down and pick one place to start. Rather than thinking of how
+        to develop the whole function in one sitting, this allows me to start carving out
+        how I want it to work and tackle smaller problems while I build it.
+
+    Which of Fowler's test double types (dummy, stub, fake, spy, mock) did you need for this lab? Why or why not?
+        For this lab we used stubs, since items like the testCarts were developed with a 
+        "canned response" like eggs being worth 4 dollars.
+
+    What's one thing that would have been different if you wrote the implementation first?
+        I would have taken longer and needed to do more random debugging rather than 
+        intentional debugging. I also would have likely written the tests after I
+        finished, and designed them to pass.
+
