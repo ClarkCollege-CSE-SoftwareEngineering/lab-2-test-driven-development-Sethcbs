@@ -3,7 +3,7 @@ import { applyDiscount,
          calculateTax,
          calculateTotal,
          CartItem,
-} from "../cartUtils";
+} from "../cartUtils.js";
 
 describe("applyDiscount", () => {
   it("applies a percentage discount to a price", () => {
